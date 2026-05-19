@@ -15,6 +15,7 @@ end
 
 @testset "work with Parameter" begin
   x = Muskingum{Float64}()
+  @show x  # display struct in CI logs
   @test bounds(x) == ((0.01, 0.5), nothing, nothing, nothing, nothing)
   @test units(x) == ("-", "-", "-", "-", "-")
 end

@@ -104,10 +104,10 @@ function funcs_from_unknown(expr::Expr, name::Symbol, checktyp; update=false)
     macros = chained_macros(expr)
     typ = firsthead(x -> namify(x.args[2]), expr, :struct)
     # If there is no struct this is a begin block with chained macros
-    if typ === nothing 
+    if typ === nothing
         typ = if length(macros) > 0
             findexpr = expr
-            for i in 1:length(macros) - 1
+            for i in 1:length(macros)-1
                 findexpr = findexpr.args[3]
             end
             findexpr.args[3]
@@ -122,7 +122,7 @@ function funcs_from_unknown(expr::Expr, name::Symbol, checktyp; update=false)
         parseblock!(block, func_exprs, name, typ, checktyp)
     end
     if length(macros) == 0
-        if update 
+        if update
             Expr(:block, func_exprs...)
         else
             Expr(:block, :(Base.@__doc__ $(esc(expr))), func_exprs...)
@@ -135,7 +135,7 @@ end
 function funcs_from_block(objtyp::Union{Symbol,Expr}, expr::Expr, name::Symbol, checktyp)
     macros = chained_macros(objtyp)
     # if !(objtyp isa Symbol) && objtyp.head == :call
-        # ojbtyp = eval(typ)
+    # ojbtyp = eval(typ)
     # end
     func_exprs = Expr[]
     firsthead(expr, :block) do block
@@ -162,6 +162,7 @@ function parseblock!(block::Expr, exprs::Vector, method::Symbol, typ::Union{Symb
                 key = getkey(fn)
                 # Then make sure its a call to |
                 expr = line.args[2]
+                # Skip fields with no metadata (e.g. Parameters.jl default-only fields)
                 !hasfield(typeof(expr), :head) && continue
                 if expr.head == :call && expr.args[1] == :(|)
                     process_equals_line!(exprs, line, expr, key, method, typ, checktyp)
@@ -188,9 +189,9 @@ end
 # exprs, line and block may all be mutated
 function process_bar_line!(exprs, args, method, typ, checktyp, i)
     expr = args[i]
-    if expr.head == :call && expr.args[1] == :(|) 
+    if expr.head == :call && expr.args[1] == :(|)
         child = expr.args[2]
-        if child isa Symbol 
+        if child isa Symbol
             key = child
             val = expr.args[3]
             val == :_ || addmethod!(exprs, method, typ, checktyp, key, val)
@@ -203,7 +204,7 @@ function process_bar_line!(exprs, args, method, typ, checktyp, i)
             expr.head = child.head
             expr.args = child.args
         else
-            process_bar_line!(exprs, expr.args, method, typ, checktyp, 2) 
+            process_bar_line!(exprs, expr.args, method, typ, checktyp, 2)
         end
     else
         error("expression is not a | : `$expr`")
@@ -213,8 +214,8 @@ end
 
 function addmethod!(exprs, method, typ, checktyp, key, value)
     func = quote
-        @inline function $method(::Type{<:$typ}, ::Type{Val{$(QuoteNode(key))}}) 
-            value = $value 
+        @inline function $method(::Type{<:$typ}, ::Type{Val{$(QuoteNode(key))}})
+            value = $value
             value isa $checktyp || FieldMetadata.metadata_error($typ, $checktyp, $(QuoteNode(key)), value)
             value
         end
@@ -222,7 +223,7 @@ function addmethod!(exprs, method, typ, checktyp, key, value)
     push!(exprs, esc(func))
 end
 
-@noinline metadata_error(typ, checktyp, key, value) = 
+@noinline metadata_error(typ, checktyp, key, value) =
     throw(MetadataError("$value of type $(typeof(value)) is not in $checktyp for key $key in $typ"))
 
 # Field could be just the name `a`
@@ -263,8 +264,8 @@ namify(x::Expr) = namify(x.args[1])
 @metadata default nothing
 @metadata units 1
 @metadata prior nothing
-@metadata label "" String 
-@metadata description "" String 
+@metadata label "" String
+@metadata description "" String
 @metadata limits (0.0, 1.0) Tuple
 @metadata bounds (0.0, 1.0) Tuple
 @metadata logscaled false Bool

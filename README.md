@@ -66,18 +66,30 @@ columns, as opposed to the opposite order which was the syntax in v0.1
 However, @with_kw from Parameters.jl must be the last macro and the first field, 
 if it is used. 
 
-<!-- 
-Additionally, any field with a default value must also have a metadata
-annotation. If you assign a default value but no metadata to any
-field, it will raise a `LoadError` with a message `type XXX has no field head`.
-You can use the default value by adding `_` as an annotation, e.g.
+Metadata annotations are optional — fields without a `|` separator are simply
+skipped and will return the default value for that metadata type. When mixing
+with Parameters.jl's `@with_kw`, you can freely omit metadata for any field:
+
 ```julia
-@bounds @with_kw struct DefaultWithKeyword{T}
-    a::T = 0 | _  # omitting the `| _` will cause an errow
-    b::T = 0 | (0, 1)
+@bounds @with_kw struct PartialBounds{T}
+    a::T = 0.5 | (0.0, 1.0)  # has bounds metadata
+    b::T = 1.0                # no bounds metadata; bounds(x, :b) returns (0.0, 1.0) (default)
 end
-``` 
--->
+
+x = PartialBounds{Float64}()
+bounds(x, :a)  # (0.0, 1.0)
+bounds(x, :b)  # (0.0, 1.0)  ← the global default
+```
+
+You can also use `_` as a placeholder to explicitly opt out of metadata for a
+field while keeping the `|` separator for other metadata in the same line:
+
+```julia
+@bounds @describe @with_kw struct Mixed{T}
+    a::T = 0 | _                | "no bounds, has description"
+    b::T = 0 | (0.0, 1.0)      | "has bounds and description"
+end
+```
 
 
 You can also update or add fields on a type that is already declared using a
