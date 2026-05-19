@@ -98,7 +98,8 @@ macro chain(name, ex)
     end
 end
 
-Base.@pure fieldname_vals(::Type{X}) where X = ([Val{fn} for fn in fieldnames(X)]...,)
+@generated fieldname_vals(::Type{X}) where X =
+    Expr(:tuple, (:(Val{$(QuoteNode(fn))}) for fn in fieldnames(X))...)
 
 function funcs_from_unknown(expr::Expr, name::Symbol, checktyp; update=false)
     macros = chained_macros(expr)
