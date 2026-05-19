@@ -9,6 +9,9 @@ end
 
 Base.showerror(io::IO, e::MetadataError) = print(io, e.var)
 
+@noinline metadata_error(typ, checktyp, key, value) =
+    throw(MetadataError("$value of type $(typeof(value)) is not in $checktyp for key $key in $typ"))
+
 """
     @metadata name default [type=Any]
 
@@ -81,17 +84,17 @@ end
 """
 macro chain(name, ex)
     macros = reverse(chained_macros(ex))
+    src = esc(:__source__)  # bypass hygiene so inner macros see the caller's __source__
     return quote
         macro $(esc(name))(ex)
-            # Use the original call site line/file info for every wrapped macro
             for mac in $macros
-                ex = Expr(:macrocall, mac, @__LINE__, ex)
+                ex = Expr(:macrocall, mac, $src, ex)
             end
             esc(ex)
         end
         macro $(esc(name))(typ, ex)
             for mac in $macros
-                ex = Expr(:macrocall, mac, @__LINE__, typ, ex)
+                ex = Expr(:macrocall, mac, $src, typ, ex)
             end
             esc(ex)
         end
@@ -224,8 +227,6 @@ function addmethod!(exprs, method, typ, checktyp, key, value)
     push!(exprs, esc(func))
 end
 
-@noinline metadata_error(typ, checktyp, key, value) =
-    throw(MetadataError("$value of type $(typeof(value)) is not in $checktyp for key $key in $typ"))
 
 # Field could be just the name `a`
 getkey(ex::Symbol) = ex
@@ -249,7 +250,7 @@ function firsthead(f, ex::Expr, sym)
     else
         for arg in ex.args
             x = firsthead(f, arg, sym)
-            x == nothing || return x
+            isnothing(x) || return x
         end
         return nothing
     end
